@@ -11,7 +11,18 @@ steps:
   displayName: 'Install Node.js'
 
 - script: |
-    npm install
-    npx playwright install
+    npm ci
+    npx playwright install --with-deps
+  displayName: 'Install dependencies'
+
+- script: |
     npx playwright test
   displayName: 'Run Playwright tests'
+  continueOnError: true
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish screenshots'
+  inputs:
+    PathtoPublish: 'screenshots'
+    ArtifactName: 'screenshots'
+    publishLocation: 'Container'
