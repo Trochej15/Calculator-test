@@ -2,19 +2,28 @@ const { test, expect } = require('@playwright/test');
 
 const URL = 'https://cs.gmu.edu:8443/offutt/servlet/calculate';
 
-// Helper functions
-async function fillNumbers(page, a, b) {
-  if (a !== null) await page.fill('input[name="firstVal"]', a);
-  if (b !== null) await page.fill('input[name="secondVal"]', b);
+/* =========================
+   Helper Functions
+========================= */
+
+async function fillNumbers(page, lhs, rhs) {
+  if (lhs !== null) await page.fill('input[name="LHS"]', lhs);
+  if (rhs !== null) await page.fill('input[name="RHS"]', rhs);
 }
 
 async function getResult(page) {
-  return await page.inputValue('input[name="result"]');
+  return await page.inputValue('input[name="RSLT"]');
 }
 
-/* -----------------------------
-   Numeric Calculator Tests
-------------------------------*/
+async function computeLength(page, value) {
+  if (value !== null) await page.fill('input[name="NAMESTRING"]', value);
+  await page.click('input[value="Compute Length"]');
+  return await page.inputValue('input[name="RSLTLEN"]');
+}
+
+/* =========================
+   Arithmetic Tests
+========================= */
 
 test('T1: Add 33 + 33 = 66', async ({ page }) => {
   await page.goto(URL);
@@ -72,12 +81,16 @@ test('T8: Divide 2 / 2 = 1', async ({ page }) => {
   expect(await getResult(page)).toBe('1');
 });
 
+/* =========================
+   Error Handling Tests
+========================= */
+
 test('T9: Divide 1 / 0 shows error', async ({ page }) => {
   await page.goto(URL);
   await fillNumbers(page, '1', '0');
   await page.click('input[value="Divide"]');
   await expect(
-    page.locator('text=One or more of your entries')
+    page.locator('text=not numeric')
   ).toBeVisible();
 });
 
@@ -87,10 +100,6 @@ test('T10: Empty / 1 = 0', async ({ page }) => {
   await page.click('input[value="Divide"]');
   expect(await getResult(page)).toBe('0');
 });
-
-/* -----------------------------
-   Invalid Input Tests
-------------------------------*/
 
 test('T11: aa + 1 shows numeric error', async ({ page }) => {
   await page.goto(URL);
@@ -113,49 +122,50 @@ test('T13: aa + aa shows numeric error', async ({ page }) => {
   await expect(page.locator('text=not numeric')).toBeVisible();
 });
 
-/* -----------------------------
+/* =========================
    String Length Tests
-------------------------------*/
+========================= */
 
-async function computeLength(page, text) {
-  if (text !== null) await page.fill('input[name="name"]', text);
-  await page.click('input[value="Compute Length"]');
-  return await page.inputValue('input[name="length"]');
-}
-
-test('T14: length(jose) = 4', async ({ page }) => {
+test('T14: Compute length of jose = 4', async ({ page }) => {
   await page.goto(URL);
   expect(await computeLength(page, 'jose')).toBe('4');
 });
 
-test('T15: length(1234) = 4', async ({ page }) => {
+test('T15: Compute length of 1234 = 4', async ({ page }) => {
   await page.goto(URL);
   expect(await computeLength(page, '1234')).toBe('4');
 });
 
-test('T16: length(acd) = 3', async ({ page }) => {
+test('T16: Compute length of acd = 3', async ({ page }) => {
   await page.goto(URL);
   expect(await computeLength(page, 'acd')).toBe('3');
 });
 
-test('T17: length(empty) = 0', async ({ page }) => {
+test('T17: Compute length of empty string = 0', async ({ page }) => {
   await page.goto(URL);
   expect(await computeLength(page, null)).toBe('0');
 });
 
-test('T18: length(12er4) = 5', async ({ page }) => {
+test('T18: Compute length of 12er4 = 5', async ({ page }) => {
   await page.goto(URL);
   expect(await computeLength(page, '12er4')).toBe('5');
 });
 
-/* -----------------------------
+/* =========================
    Reset Test
-------------------------------*/
+========================= */
 
 test('Reset clears all fields', async ({ page }) => {
   await page.goto(URL);
+
   await fillNumbers(page, '33', '33');
-  await page.fill('input[name="name"]', 'jose');
-  await page.click('input[value="Reset"]');
+  await page.fill('input[name="NAMESTRING"]', 'jose');
+
+  await Promise.all([
+    page.waitForLoadState('load'),
+    page.click('input[value="Reset"]')
+  ]);
+
+  await page.waitForSelector('input[name="LHS"]');
   await page.screenshot({ path: 'screenshots/reset-clears-all.png' });
 });
